@@ -2,6 +2,8 @@ import os
 import streamlit as st
 from langchain_couchbase import CouchbaseVectorStore
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import tempfile
+from langchain_community.document_loaders import PyPDFLoader
 
 @st.cache_resource(show_spinner="Connecting to Couchbase")
 def connect_to_couchbase(connection_string, db_username, db_password):
@@ -48,6 +50,20 @@ def check_environment_variable(variable_name):
         )
         st.stop()
 
+def save_to_vector_store(uploaded_file, vector_store):
+    """Chunk the PDF & store it in Couchbase Vector Store"""
+    if uploaded_file is not None:
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_file_path = os.path.join(temp_dir.name, uploaded_file.name)
+
+        with open(temp_file_path, "wb") as f:
+            f.write(uploaded_file.getvalue())
+            loader = PyPDFLoader(temp_file_path)
+            docs = loader.load()
+
+        vector_store.add_documents(docs)
+        st.info(f"PDF loaded into vector store in {len(docs)} documents")
+
 if __name__ == "__main__":
 
     st.set_page_config(
@@ -89,4 +105,15 @@ if __name__ == "__main__":
         INDEX_NAME,
     )
 
-    
+    with st.sidebar:
+        st.header("Upload your PDF")
+        with st.form("upload pdf"):
+            uploaded_file = st.file_uploader(
+                "Choose a PDF.",
+                help="The document will be deleted after one hour of inactivity (TTL).",
+                type="pdf",
+            )
+            submitted = st.form_submit_button("Upload")
+            if submitted:
+                save_to_vector_store(uploaded_file, vector_store)
+
