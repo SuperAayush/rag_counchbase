@@ -2,6 +2,14 @@
 
 This demo application allows you to converse with your personalized PDF documents by leveraging Couchbase's vector search features to enhance the outcomes from Gemini Pro in a Retrieval-Augmented-Generation (RAG) setup.
 
+## Application logic and architecture
+
+<img width="1257" alt="image" src="https://github.com/user-attachments/assets/93526d50-b30d-49f3-8081-fb9547e539da" />
+
+From the sidebar on the Main Page, a user uploads a PDF, activating the save_to_vector_store function that then stores the PDF in the Couchbase vector store. Subsequently, the user is able to interact with the LLM.
+
+In the Chat Area, the user submits queries. These questions are handled by the Chat API, which utilizes the LLM to generate answers, using context supplied by RAG. The assistant presents these responses, offering the user the opportunity to pose further questions.
+
 ### How does it work?
 
 Upload your personalized PDF files and pose inquiries directly via the chat interface.
@@ -51,7 +59,7 @@ In the RAG process, we utilize Langchain, Couchbase Vector Search, and Gemini Pr
 
   `streamlit run main.py`
 
-### Without Councbase
+### Without Counchbase
 
 The application without couchbase will only generate one response and with not have vector embedding from couchbase. You can run it using the below commands
 
