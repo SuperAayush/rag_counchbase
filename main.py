@@ -121,6 +121,19 @@ if __name__ == "__main__":
             if submitted:
                 save_to_vector_store(uploaded_file, vector_store)
 
+        st.subheader("Workflow of this app")
+        st.markdown(
+            """
+            For each question, you will get two answers: 
+            * one using RAG 
+            * one using pure LLM
+            """
+        )
+
+        st.markdown(
+            "For RAG, I have used [Langchain](https://langchain.com/), [Couchbase Vector Search](https://couchbase.com/) & [Gemini](https://gemini.google.com/). This app fetch parts of the PDF relevant to the question using Vector search & add it as the context to the LLM. The LLM is instructed to answer based on the context from the Vector Store."
+        )
+
     retriever = vector_store.as_retriever()
 
     template = """If you are not able to answer based on the context provided, respond with a generic answer. Answer the question using the context below:
@@ -164,3 +177,54 @@ if __name__ == "__main__":
     st.markdown(
         "First generated answer is using *RAG* while second generated answer is purely by *LLM (Gemini)*"
     )
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": "Hi, I'm a chatbot who can chat with the PDF. How can I help you?"
+            }
+        )
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if question := st.chat_input("Ask a question based on the PDF"):
+        st.chat_message("user").markdown(question)
+        st.session_state.messages.append(
+            {"role": "user", "content": question}
+        )
+
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+
+        rag_response = ""
+        for chunk in chain.stream(question):
+            rag_response += chunk
+            message_placeholder.markdown(rag_response + "▌")
+
+        message_placeholder.markdown(rag_response)
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": rag_response
+            }
+        )
+
+        with st.chat_message("ai"):
+            message_placeholder_pure_llm = st.empty()
+        pure_llm_response = ""
+
+        for chunk in chain_without_rag.stream(question):
+            pure_llm_response += chunk
+            message_placeholder_pure_llm.markdown(pure_llm_response + "▌")
+
+        message_placeholder_pure_llm.markdown(pure_llm_response)
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": pure_llm_response
+            }
+        )
