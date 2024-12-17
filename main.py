@@ -4,6 +4,10 @@ from langchain_couchbase import CouchbaseVectorStore
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import tempfile
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import GoogleGenerativeAI
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
 @st.cache_resource(show_spinner="Connecting to Couchbase")
 def connect_to_couchbase(connection_string, db_username, db_password):
@@ -117,3 +121,46 @@ if __name__ == "__main__":
             if submitted:
                 save_to_vector_store(uploaded_file, vector_store)
 
+    retriever = vector_store.as_retriever()
+
+    template = """If you are not able to answer based on the context provided, respond with a generic answer. Answer the question using the context below:
+    {context}
+
+    Question: {question}"""
+
+    prompt = ChatPromptTemplate.from_template(template)
+
+    llm = GoogleGenerativeAI(
+        temperature=0.3,
+        model="models/gemini-1.5-pro",
+    )
+
+    chain = (
+        {"context": retriever, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+
+    template_without_rag = """Answer the question.
+
+    Question: {question}"""
+
+    prompt_without_rag = ChatPromptTemplate.from_template(template_without_rag)
+
+    llm_without_rag = GoogleGenerativeAI(
+        temperature=0,
+        model="models/gemini-1.5-pro",
+    )
+
+    chain_without_rag = (
+        {"question": RunnablePassthrough()}
+        | prompt_without_rag
+        | llm_without_rag
+        | StrOutputParser()
+    )
+
+    st.title("Privacera Assignment")
+    st.markdown(
+        "First generated answer is using *RAG* while second generated answer is purely by *LLM (Gemini)*"
+    )
